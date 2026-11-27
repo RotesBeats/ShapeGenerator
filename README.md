@@ -2,7 +2,7 @@
 
 Interactive SVG shape generator for stars, starbursts, badges, gears and other radial shapes, with a live preview. Tweak points, radii, rounded corners, curved edges, per-beam edits and animation, then copy or download clean, standalone SVG.
 
-**Live app:** https://rotesbeats.github.io/rayform/
+**Live app:** https://YOUR-USERNAME.github.io/rayform/
 
 <!-- Add a screenshot: save it as docs/screenshot.png and uncomment the line below -->
 <!-- ![Rayform screenshot](docs/screenshot.png) -->
@@ -91,4 +91,10 @@ Every push to `main` builds the app and publishes it to GitHub Pages through the
 
 ## License
 
-[MIT](LICENSE)
+Rayform is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE).
+
+- **Free** for personal use, learning, hobby projects, research, and use by charities, schools and other non-profit organizations.
+- **Commercial use** (for example inside a paid product, a client project billed for, or a business) needs a separate license. Get in touch through my [GitHub profile](https://github.com/RotesBeats).
+- **Your SVGs are yours.** Shapes you create and export with Rayform are free to use for any purpose, including commercial work. The license covers the source code, not the files you make with the app.
+
+This repository is not currently accepting code contributions. Bug reports and ideas are welcome as issues.
