@@ -2,7 +2,7 @@
 
 Interactive SVG shape generator for stars, starbursts, badges, gears and other radial shapes, with a live preview. Tweak points, radii, rounded corners, curved edges, per-beam edits and animation, then copy or download clean, standalone SVG.
 
-**Live app:** https://RotesBeats.github.io/rayform/
+**Live app:** https://rotesbeats.github.io/rayform/
 
 <!-- Add a screenshot: save it as docs/screenshot.png and uncomment the line below -->
 <!-- ![Rayform screenshot](docs/screenshot.png) -->
