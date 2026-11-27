@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="img/repo-banner.png" alt="Rayform: SVG shape generator" width="100%">
+</p>
+
 # Rayform
 
 Interactive SVG shape generator for stars, starbursts, badges, gears and other radial shapes, with a live preview. Tweak points, radii, rounded corners, curved edges, per-beam edits and animation, then copy or download clean, standalone SVG.
