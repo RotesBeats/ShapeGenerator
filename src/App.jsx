@@ -567,7 +567,7 @@ export default function StarGenerator() {
   const download = () => {
     const url = URL.createObjectURL(new Blob([svgString], { type: "image/svg+xml" }));
     const a = document.createElement("a");
-    a.href = url; a.download = `star-${p.points}pt.svg`;
+    a.href = url; a.download = `rayform-${p.points}pt.svg`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -682,7 +682,7 @@ export default function StarGenerator() {
           <div className="sg-logo" aria-hidden>
             <svg viewBox="-12 -12 24 24" width="20" height="20"><path d="M0 -10L3 -3.2L10 -3L4.6 1.6L6.2 9L0 5L-6.2 9L-4.6 1.6L-10 -3L-3 -3.2Z" fill="#F9F9F9" /></svg>
           </div>
-          <h1 className="sg-title">Star Gen</h1>
+          <h1 className="sg-title">Rayform</h1>
           <span className="sg-model">SG-01</span>
           <span className="sg-badge"><i />Live svg</span>
         </div>
