@@ -944,9 +944,9 @@ export default function StarGenerator() {
           </Section>
 
           <Section title="Favorites" index="07">
-            <button className="sg-chip accent" style={{ width: "100%" }} onClick={saveFav}>Save current star<kbd>S</kbd></button>
+            <button className="sg-chip accent" style={{ width: "100%" }} onClick={saveFav}>Save current shape<kbd>S</kbd></button>
             {favs.length === 0 ? (
-              <p className="sg-empty">Nothing saved yet. Saved stars appear here, and are kept in this browser when storage is available.</p>
+              <p className="sg-empty">Nothing saved yet. Saved shapes appear here, and are kept in this browser when storage is available.</p>
             ) : (
               <div className="sg-favs">
                 {favs.map((fav) => (
