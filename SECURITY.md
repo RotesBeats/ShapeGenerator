@@ -22,7 +22,7 @@ Only the latest version, the one live at https://rotesbeats.github.io/Rayform/ a
 Use one of these private channels:
 
 1. **GitHub private reporting (preferred):** go to the repository's **Security** tab and click **Report a vulnerability**.
-2. **Email:** **YOUR-EMAIL-HERE**
+2. **Email:** **pablo@linktvis.be**
 
 Please include:
 
