@@ -43,6 +43,7 @@ Interactive SVG shape generator for stars, starbursts, badges, gears and other r
   - Recording runs in real time in your browser, so keep the tab open and in the foreground until it finishes
   - Works in Chrome, Edge and Firefox. Safari can't record WebM, and it ignores transparency when playing WebM files
  
+[rayform-8pt-soften.webm](https://github.com/user-attachments/assets/3905f864-4b52-4801-95a9-f3b4375ee0ee)
 
 
 ## Keyboard shortcuts
