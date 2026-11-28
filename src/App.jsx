@@ -394,6 +394,39 @@ function FavThumb({ fav, onLoad, onDelete }) {
   );
 }
 
+/* Pure animation frame: the same maths drives the live preview and the WebM recorder. */
+function animView(shown, mode, intensity, t) {
+  const k = intensity / 100; // animation intensity scales every effect
+  switch (mode) {
+      case "spin": return { ...shown, rotation: shown.rotation + t * 50 * k };
+      case "pulse": return { ...shown, innerR: shown.innerR * (1 + 0.35 * k * Math.sin(t * 2.2)), outerR: shown.outerR * (1 + 0.06 * k * Math.sin(t * 2.2 + 1)) };
+      case "twist": return { ...shown, skew: shown.skew + 28 * k * Math.sin(t * 1.6) };
+      case "ripple": return { ...shown, _wave: { amp: 0.2 * k, t: t * 3 } };
+      case "breathe": { const m = 1 + 0.12 * k * Math.sin(t * 1.6); return { ...shown, outerR: shown.outerR * m, innerR: shown.innerR * m }; }
+      case "sway": return { ...shown, rotation: shown.rotation + 25 * k * Math.sin(t * 1.4) };
+      case "soften": return {
+        ...shown,
+        outerRound: shown.outerRound + k * (50 + 50 * Math.sin(t * 1.3) - shown.outerRound),
+        innerRound: shown.innerRound + k * (50 + 50 * Math.sin(t * 1.3 + 1.5) - shown.innerRound),
+      };
+      case "bloom": return { ...shown, curve: shown.curve + 70 * k * Math.sin(t * 1.5) };
+      case "flutter": return { ...shown, _flutter: { amp: 0.3 * k, t: t * 2.5 } };
+      default: return shown;
+  }
+}
+
+/* Animation-time length of one seamless loop (t runs at `speed` per real second). */
+const TAU = Math.PI * 2;
+const LOOP_OMEGA = { pulse: 2.2, twist: 1.6, ripple: 3, breathe: 1.6, sway: 1.4, soften: 1.3, bloom: 1.5, flutter: 2.5 };
+function loopLength(p, mode, intensity) {
+  if (mode === "spin") return 360 / (50 * Math.max(intensity / 100, 0.05)); // one full turn
+  return TAU / (LOOP_OMEGA[mode] || 1);
+}
+function pickMime() {
+  if (typeof MediaRecorder === "undefined") return null;
+  return ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((m) => MediaRecorder.isTypeSupported(m)) || null;
+}
+
 export default function StarGenerator() {
   const [p, setP] = useState(DEFAULTS);
   const [bg, setBg] = useState("dark");
@@ -405,6 +438,10 @@ export default function StarGenerator() {
   const [t, setT] = useState(0);
   const [favs, setFavs] = useState([]);
   const [showKeys, setShowKeys] = useState(false);
+  const [rec, setRec] = useState(null); // null | { progress: 0..1 }
+  const [recSize, setRecSize] = useState(720);
+  const [recMsg, setRecMsg] = useState("");
+  const recCancel = useRef(false);
   const timer = useRef(null);
   const svgRef = useRef(null);
   const drag = useRef(null);
@@ -422,25 +459,7 @@ export default function StarGenerator() {
   const svgString = useMemo(() => buildSvgString({ ...p, fill: fillNow }, exact.d, exact.extent), [p, exact, fillNow]);
   const shown = useSmooth(p);
   const staticStar = useMemo(() => buildStar(shown), [shown]);
-  const view = useMemo(() => {
-    const k = anim.intensity / 100; // animation intensity scales every effect
-    switch (anim.mode) {
-      case "spin": return { ...shown, rotation: shown.rotation + t * 50 * k };
-      case "pulse": return { ...shown, innerR: shown.innerR * (1 + 0.35 * k * Math.sin(t * 2.2)), outerR: shown.outerR * (1 + 0.06 * k * Math.sin(t * 2.2 + 1)) };
-      case "twist": return { ...shown, skew: shown.skew + 28 * k * Math.sin(t * 1.6) };
-      case "ripple": return { ...shown, _wave: { amp: 0.2 * k, t: t * 3 } };
-      case "breathe": { const m = 1 + 0.12 * k * Math.sin(t * 1.6); return { ...shown, outerR: shown.outerR * m, innerR: shown.innerR * m }; }
-      case "sway": return { ...shown, rotation: shown.rotation + 25 * k * Math.sin(t * 1.4) };
-      case "soften": return {
-        ...shown,
-        outerRound: shown.outerRound + k * (50 + 50 * Math.sin(t * 1.3) - shown.outerRound),
-        innerRound: shown.innerRound + k * (50 + 50 * Math.sin(t * 1.3 + 1.5) - shown.innerRound),
-      };
-      case "bloom": return { ...shown, curve: shown.curve + 70 * k * Math.sin(t * 1.5) };
-      case "flutter": return { ...shown, _flutter: { amp: 0.3 * k, t: t * 2.5 } };
-      default: return shown;
-    }
-  }, [shown, anim.mode, anim.intensity, t]);
+  const view = useMemo(() => animView(shown, anim.mode, anim.intensity, t), [shown, anim.mode, anim.intensity, t]);
   const live = useMemo(() => (anim.mode === "off" ? staticStar : buildStar(view)), [view, staticStar, anim.mode]);
   const half = Math.max(280, Math.ceil(staticStar.extent * (anim.mode === "off" ? 1 : 1.3) + 12));
   const selIdx = Math.min(sel, p.points - 1);
@@ -571,6 +590,65 @@ export default function StarGenerator() {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
+
+
+  /* ---- record the animation as a seamless-loop .webm ---- */
+  const recordWebm = () => {
+    const mime = pickMime();
+    if (anim.mode === "off") return;
+    if (!mime) { setRecMsg("This browser can't record WebM. Try Chrome, Edge or Firefox."); return; }
+    setRecMsg("");
+    const S = recSize;
+    const canvas = document.createElement("canvas");
+    canvas.width = S; canvas.height = S;
+    const ctx = canvas.getContext("2d");
+    const frameHalf = Math.max(280, Math.ceil(exact.extent * 1.3 + 12));
+    const scale = S / (frameHalf * 2);
+    const bgColor = bg === "dark" ? C.char : C.white;
+    const fillColor = fillNow;
+    const loopT = loopLength(p, anim.mode, anim.intensity);
+    const loops = Math.max(1, Math.round(5 / (loopT / anim.speed))); // aim for about 5 s or more
+    const totalT = Math.min(loopT * loops, loopT * Math.max(1, Math.floor(20 / (loopT / anim.speed))) || loopT);
+    const realMs = Math.min((totalT / anim.speed) * 1000, 20000); // never record more than 20 s
+    const draw = (tt) => {
+      const star = buildStar(animView(p, anim.mode, anim.intensity, tt));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, S, S);
+      if (bg !== "checker") { ctx.fillStyle = bgColor; ctx.fillRect(0, 0, S, S); } // transparent preview keeps the alpha channel
+      ctx.setTransform(scale, 0, 0, scale, S / 2, S / 2);
+      ctx.fillStyle = fillColor; ctx.fill(new Path2D(star.d));
+    };
+    draw(0);
+    const stream = canvas.captureStream(30);
+    const recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+      stream.getTracks().forEach((tr) => tr.stop());
+      setRec(null);
+      if (recCancel.current) return;
+      const url = URL.createObjectURL(new Blob(chunks, { type: "video/webm" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `rayform-${p.points}pt-${anim.mode}.webm`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    };
+    recCancel.current = false;
+    setRec({ progress: 0 });
+    recorder.start();
+    const t0 = performance.now();
+    const frame = (now) => {
+      if (recCancel.current) { recorder.state !== "inactive" && recorder.stop(); return; }
+      const end = realMs - 1000 / 30; // stop one frame early: the last frame would equal the first and stall the loop
+      const el = Math.min(now - t0, end);
+      draw((el / realMs) * totalT);
+      setRec({ progress: el / end });
+      if (el < end) requestAnimationFrame(frame);
+      else setTimeout(() => recorder.state !== "inactive" && recorder.stop(), 120);
+    };
+    requestAnimationFrame(frame);
+  };
+  const cancelRec = () => { recCancel.current = true; };
 
   /* ---- undo / redo (slider drags are grouped into one step) ---- */
   const pRef = useRef(p);
@@ -714,7 +792,7 @@ export default function StarGenerator() {
               pts {String(p.points).padStart(2, "0")} · R{p.outerR} · r{p.innerR}
             </div>
             <div className="sg-readout" style={{ left: 16, bottom: 14, color: tone }}>
-              {anim.mode !== "off" ? "anim not exported" : handlesVisible ? "drag tips to edit" : ""}
+              {anim.mode !== "off" ? "export: record .webm" : handlesVisible ? "drag tips to edit" : ""}
             </div>
             <div className="sg-readout" style={{ right: 16, bottom: 14, color: tone }}>
               {(p.fill ?? "auto").toString().toUpperCase()}
@@ -850,7 +928,7 @@ export default function StarGenerator() {
             </div>
             <Field label="Speed" value={anim.speed} min={0.25} max={3} step={0.25} unit="×" disabled={anim.mode === "off"} onChange={(v) => setAnim((a) => ({ ...a, speed: v }))} />
             <Field label="Intensity" value={anim.intensity} min={0} max={100} step={5} unit="%" disabled={anim.mode === "off"} onChange={(v) => setAnim((a) => ({ ...a, intensity: v }))} />
-            <p className="sg-hint" style={{ marginTop: -6 }}>Preview only. The exported SVG is always the static shape.</p>
+            <p className="sg-hint" style={{ marginTop: -6 }}>The SVG export is always the static shape. Use Record .WEBM in Export to save the animation.</p>
           </Section>
 
           <Section title="Color" index="06">
@@ -883,6 +961,30 @@ export default function StarGenerator() {
               <button onClick={copy} className="sg-btn primary">{toast ? "Copied!" : "Copy SVG Code"}</button>
               <button onClick={download} className="sg-btn secondary">Download .SVG</button>
             </div>
+            <div style={{ height: 1, background: "var(--line)", margin: "14px 0" }} />
+            <div className="sg-label" style={{ marginBottom: 8 }}>Animation video</div>
+            <div className="flex" style={{ gap: 8, marginBottom: 10 }}>
+              {[[480, "480"], [720, "720"], [1080, "1080"]].map(([v, l]) => (
+                <button key={v} className={`sg-chip sg-mini ${recSize === v ? "on" : ""}`} onClick={() => setRecSize(v)} disabled={!!rec}>{l} px</button>
+              ))}
+            </div>
+            {rec ? (
+              <div className="flex" style={{ gap: 10, alignItems: "center" }}>
+                <div style={{ flex: 1, height: 10, borderRadius: 5, background: "rgba(35,35,35,.12)", overflow: "hidden" }}>
+                  <div style={{ width: `${Math.round(rec.progress * 100)}%`, height: "100%", background: "var(--blue)" }} />
+                </div>
+                <button onClick={cancelRec} className="sg-btn secondary" style={{ flex: "0 0 auto" }}>Cancel</button>
+              </div>
+            ) : (
+              <button onClick={recordWebm} disabled={anim.mode === "off"} className="sg-btn primary" style={{ width: "100%", opacity: anim.mode === "off" ? 0.45 : 1, cursor: anim.mode === "off" ? "not-allowed" : "pointer" }}>
+                Record .WEBM
+              </button>
+            )}
+            <p className="sg-hint" style={{ marginTop: 8 }}>
+              {recMsg || (anim.mode === "off"
+                ? "Pick an animation in section 05 first."
+                : "Records a seamless loop of about 5 seconds at the current speed and intensity. Keep this tab open while it records." + (bg === "checker" ? " Transparent preview records a WebM with a transparent background." : ""))}
+            </p>
             <textarea className="sg-code" readOnly value={svgString} rows={6} spellCheck={false} />
           </Section>
         </aside>
