@@ -35,7 +35,15 @@ Interactive SVG shape generator for stars, starbursts, badges, gears and other r
 - Preview only: the exported SVG is always the static shape
 
 **Export**
-- Copy the SVG code or download a `.svg` file with a tightly fitted `viewBox` and a transparent background
+- **SVG:** copy the code or download a `.svg` file with a tightly fitted `viewBox` and no background
+- **WebM video:** record the animation you are previewing and download it as a looping `.webm` file
+  - Pick a size of 480, 720 or 1080 px, then click **Record .WEBM**
+  - Records a seamless loop of about 5 seconds, using your current shape, color, speed and intensity (never longer than 20 seconds)
+  - Choose the **Transparent** preview background to get a WebM with a transparent background; Dark and Light record with a solid background
+  - Recording runs in real time in your browser, so keep the tab open and in the foreground until it finishes
+  - Works in Chrome, Edge and Firefox. Safari can't record WebM, and it ignores transparency when playing WebM files
+ 
+
 
 ## Keyboard shortcuts
 
